@@ -50,6 +50,9 @@ class Twilio(object):
         self.application_sid = app.config.get('TWILIO_APPLICATION_SID')
         self.client = Client(account_sid, auth_token)
 
+    def __getattr__(self, name):
+        return getattr(self.client, name)
+
 
 def twilio_request(func):
     """
