@@ -96,7 +96,7 @@ def _underscore(data):
         s1 = _first_cap_re.sub(r'\1_\2', name)
         return _all_cap_re.sub(r'\1_\2', s1).lower()
 
-    return {_(k): v for k, v in data.items()}
+    return {_(k): v for k, v in data.items() if data[k]}
 
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
