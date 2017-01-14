@@ -8,14 +8,8 @@
 
 import functools
 import logging
-import re
 
-from flask import (
-    abort,
-    current_app,
-    make_response,
-    request,
-)
+from flask import abort, current_app, make_response, request
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
 from twilio.rest import Client
 from twilio.security import RequestValidator
@@ -75,7 +69,7 @@ def twilio_request(func):
         if not validator.validate(request.url, request.values, signature):
             logger.warning('Invalid signature')
             abort(BAD_REQUEST)
-        _response = func(*args, _underscore(request.form), **kwargs)
+        _response = func(*args, **kwargs)
         if _response is None:
             response = make_response('')
             response.content_type = 'application/xml'
@@ -85,22 +79,6 @@ def twilio_request(func):
         return response
 
     return decorated_view
-
-
-def _underscore(data):
-    """
-    https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
-    https://stackoverflow.com/questions/21169792/python-function-to-convert-camel-case-to-snake-case
-    """
-    def _(name):
-        s1 = _first_cap_re.sub(r'\1_\2', name)
-        return _all_cap_re.sub(r'\1_\2', s1).lower()
-
-    return {_(k): v for k, v in data.items() if data[k]}
-
-
-_first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-_all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
 
 # EOF
