@@ -9,7 +9,7 @@
 import functools
 import logging
 
-from flask import abort, current_app, make_response, request
+from flask import abort, make_response, request
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
 from twilio.rest import Client
 from twilio.security import RequestValidator
@@ -36,6 +36,7 @@ class Twilio(object):
     application_sid = None
 
     client = None
+    request_validator = None
 
     def __init__(self, app=None):
         if app is not None:
@@ -49,36 +50,35 @@ class Twilio(object):
             return
         self.application_sid = app.config.get('TWILIO_APPLICATION_SID')
         self.client = Client(account_sid, auth_token)
+        self.request_validator = RequestValidator(auth_token)
+
+    def endpoint(self, func):
+        """
+        https://www.twilio.com/docs/api/security
+        https://www.twilio.com/docs/api/twiml
+        https://www.twilio.com/docs/api/twiml/twilio_request
+        https://www.twilio.com/docs/api/twiml/your_response
+        """
+
+        @functools.wraps(func)
+        def decorated_view(*args, **kwargs):
+            signature = request.headers.get('x-twilio-signature')
+            if not self.request_validator.validate(request.url, request.values, signature):
+                logger.warning('Invalid signature')
+                abort(BAD_REQUEST)
+            _response = func(*args, **kwargs)
+            if _response is None:
+                response = make_response('')
+                response.content_type = 'application/xml'
+                return response, NO_CONTENT
+            response = make_response(str(_response))
+            response.content_type = 'application/xml'
+            return response
+
+        return decorated_view
 
     def __getattr__(self, name):
         return getattr(self.client, name)
-
-
-def twilio_request(func):
-    """
-    https://www.twilio.com/docs/api/twiml
-    https://www.twilio.com/docs/api/twiml/twilio_request
-    https://www.twilio.com/docs/api/twiml/your_response
-    https://www.twilio.com/docs/api/security
-    """
-
-    @functools.wraps(func)
-    def decorated_view(*args, **kwargs):
-        validator = RequestValidator(current_app.config.get('TWILIO_AUTH_TOKEN'))
-        signature = request.headers.get('x-twilio-signature')
-        if not validator.validate(request.url, request.values, signature):
-            logger.warning('Invalid signature')
-            abort(BAD_REQUEST)
-        _response = func(*args, **kwargs)
-        if _response is None:
-            response = make_response('')
-            response.content_type = 'application/xml'
-            return response, NO_CONTENT
-        response = make_response(str(_response))
-        response.content_type = 'application/xml'
-        return response
-
-    return decorated_view
 
 
 # EOF
