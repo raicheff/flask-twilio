@@ -8,9 +8,11 @@
 
 import functools
 import logging
+import re
 
-from flask import abort, make_response, request
+from flask import Blueprint, abort, make_response, request as _request
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
+from twilio.jwt.client import CapabilityToken
 from twilio.rest import Client
 from twilio.security import RequestValidator
 
@@ -38,11 +40,14 @@ class Twilio(object):
     client = None
     request_validator = None
 
-    def __init__(self, app=None):
-        if app is not None:
-            self.init_app(app)
+    blueprint = None
 
-    def init_app(self, app):
+    def __init__(self, app=None, blueprint=None):
+        if app is not None:
+            self.init_app(app, blueprint)
+
+    def init_app(self, app, blueprint=None, url_prefix=None):
+
         self.account_sid = account_sid = app.config.get('TWILIO_ACCOUNT_SID')
         self.auth_token = auth_token = app.config.get('TWILIO_AUTH_TOKEN')
         if not (account_sid and auth_token):
@@ -52,7 +57,12 @@ class Twilio(object):
         self.client = Client(account_sid, auth_token)
         self.request_validator = RequestValidator(auth_token)
 
-    def endpoint(self, func):
+        if blueprint is None:
+            blueprint = Blueprint('twilio', __name__, url_prefix=url_prefix)
+        blueprint.add_url_rule('/twilio/voice', 'twilio-voice', self._voice_handler, methods=['POST'])
+        self.blueprint = blueprint
+
+    def request(self, func):
         """
         https://www.twilio.com/docs/api/security
         https://www.twilio.com/docs/api/twiml
@@ -62,10 +72,12 @@ class Twilio(object):
 
         @functools.wraps(func)
         def decorated_view(*args, **kwargs):
-            signature = request.headers.get('x-twilio-signature')
-            if not self.request_validator.validate(request.url, request.values, signature):
+
+            signature = _request.headers.get('x-twilio-signature')
+            if not self.request_validator.validate(_request.url, _request.values, signature):
                 logger.warning('Invalid signature')
                 abort(BAD_REQUEST)
+
             _response = func(*args, **kwargs)
             if _response is None:
                 response = make_response('')
@@ -77,8 +89,32 @@ class Twilio(object):
 
         return decorated_view
 
+    def voice(self, handler):
+        self._voice_handler = self.request(lambda: handler(_underscore(_request.form)))
+        return handler
+
+    def capability_token(self):
+        return CapabilityToken(self.account_sid, self.auth_token)
+
     def __getattr__(self, name):
         return getattr(self.client, name)
+
+
+def _underscore(data):
+    """
+    https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
+    https://stackoverflow.com/questions/21169792/python-function-to-convert-camel-case-to-snake-case
+    """
+
+    def _(name):
+        s1 = RE_FIRST_CAP.sub(r'\1_\2', name)
+        return RE_ALL_CAP.sub(r'\1_\2', s1).lower()
+
+    return {_(k): v for k, v in data.items() if data[k]}
+
+
+RE_FIRST_CAP = re.compile('(.)([A-Z][a-z]+)')
+RE_ALL_CAP = re.compile('([a-z0-9])([A-Z])')
 
 
 # EOF
