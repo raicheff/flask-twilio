@@ -16,8 +16,8 @@ setup(
     author='Boris Raicheff',
     author_email='b@raicheff.com',
     url='https://github.com/raicheff/flask-twilio',
-    install_requires=['flask', 'six', 'twilio'],
-    py_modules=['flask_twilio'],
+    install_requires=('flask', 'six', 'twilio'),
+    py_modules=('flask_twilio',),
 )
 
 
