@@ -43,6 +43,7 @@ class Twilio(object):
     blueprint = None
 
     def __init__(self, app=None, blueprint=None):
+        self._routes = {}
         if app is not None:
             self.init_app(app, blueprint)
 
@@ -59,8 +60,22 @@ class Twilio(object):
 
         if blueprint is None:
             blueprint = Blueprint('twilio', __name__, url_prefix=url_prefix)
-        blueprint.add_url_rule('/twilio/voice', 'twilio-voice', self._voice_handler, methods=['POST'])
         self.blueprint = blueprint
+
+        for rule, options in self._routes.items():
+            f = options.pop('view_func')
+
+            @self.request
+            def view_func():
+                # return f(TwiMLRequest(**_underscore(_request.form)))
+                return f(_underscore(_request.form))
+
+            rule = '/twilio' + rule
+            endpoint = options.pop('endpoint', f.__name__)
+            methods = options.pop('methods', ['POST'])
+            blueprint.add_url_rule(rule, endpoint, view_func, methods=methods, **options)
+
+        del self._routes
 
     def request(self, func):
         """
@@ -89,9 +104,11 @@ class Twilio(object):
 
         return decorated_view
 
-    def voice(self, handler):
-        self._voice_handler = self.request(lambda: handler(_underscore(_request.form)))
-        return handler
+    def route(self, rule, **options):
+        def decorator(f):
+            self._routes[rule] = {'view_func': f, **options}
+            return f
+        return decorator
 
     def capability_token(self):
         return CapabilityToken(self.account_sid, self.auth_token)
