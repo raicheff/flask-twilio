@@ -63,19 +63,11 @@ class Twilio(object):
         self.blueprint = blueprint
 
         for rule, options in self._routes.items():
-            f = options.pop('view_func')
-
-            @self.request
-            def view_func():
-                # return f(TwiMLRequest(**_underscore(_request.form)))
-                return f(_underscore(_request.form))
-
+            view_func = self.request(options.pop('view_func'))
             rule = '/twilio' + rule
-            endpoint = options.pop('endpoint', f.__name__)
+            endpoint = 'twilio-' + options.pop('endpoint')
             methods = options.pop('methods', ['POST'])
             blueprint.add_url_rule(rule, endpoint, view_func, methods=methods, **options)
-
-        del self._routes
 
     def request(self, func):
         """
@@ -93,7 +85,7 @@ class Twilio(object):
                 logger.warning('Invalid signature')
                 abort(BAD_REQUEST)
 
-            _response = func(*args, **kwargs)
+            _response = func(_underscore(_request.form), *args, **kwargs)
             if _response is None:
                 response = make_response('')
                 response.content_type = 'application/xml'
