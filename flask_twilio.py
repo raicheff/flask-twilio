@@ -12,9 +12,9 @@ import re
 
 from flask import Blueprint, abort, make_response, request as _request
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
-from twilio.jwt.client import CapabilityToken
+from twilio.jwt.client import ClientCapabilityToken
+from twilio.request_validator import RequestValidator
 from twilio.rest import Client
-from twilio.security import RequestValidator
 
 
 logger = logging.getLogger('Flask-Twilio')
@@ -103,7 +103,7 @@ class Twilio(object):
         return decorator
 
     def capability_token(self):
-        return CapabilityToken(self.account_sid, self.auth_token)
+        return ClientCapabilityToken(self.account_sid, self.auth_token)
 
     def __getattr__(self, name):
         return getattr(self.client, name)
