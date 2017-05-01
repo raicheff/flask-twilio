@@ -11,13 +11,59 @@ import logging
 import re
 
 from flask import Blueprint, abort, make_response, request as _request
+from requests import Request, Session
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
+from twilio.http import HttpClient, get_cert_file
+from twilio.http.response import Response
 from twilio.jwt.client import ClientCapabilityToken
 from twilio.request_validator import RequestValidator
 from twilio.rest import Client
+from twilio.twiml import TwiML
 
 
 logger = logging.getLogger('Flask-Twilio')
+
+
+class TwilioHttpClient(HttpClient):
+    """
+    General purpose HTTP Client for interacting with the Twilio API
+    """
+
+    def __init__(self) -> None:
+        session = Session()
+        session.verify = get_cert_file()
+        self.session = session
+
+    def request(self, method, url, params=None, data=None, headers=None, auth=None, timeout=None, allow_redirects=False):
+        """
+        Make an HTTP Request with parameters provided.
+
+        :param str method: The HTTP method to use
+        :param str url: The URL to request
+        :param dict params: Query parameters to append to the URL
+        :param dict data: Parameters to go in the body of the HTTP request
+        :param dict headers: HTTP Headers to send with the request
+        :param tuple auth: Basic Auth arguments
+        :param float timeout: Socket/Read timeout for the request
+        :param boolean allow_redirects: Whether or not to allow redirects
+        See the requests documentation for explanation of all these parameters
+
+        :return: An http response
+        :rtype: A :class:`Response <twilio.rest.http.response.Response>` object
+        """
+
+        headers.pop('User-Agent', None)
+
+        request = Request(method.upper(), url, params=params, data=data, headers=headers, auth=auth)
+
+        prepped_request = self.session.prepare_request(request)
+        response = self.session.send(
+            prepped_request,
+            allow_redirects=allow_redirects,
+            timeout=timeout,
+        )
+
+        return Response(int(response.status_code), response.content.decode('utf-8'))
 
 
 class Twilio(object):
@@ -32,6 +78,8 @@ class Twilio(object):
 
     :param app: Flask app to initialize with. Defaults to `None`
     """
+
+    app = None
 
     account_sid = None
     auth_token = None
@@ -49,13 +97,15 @@ class Twilio(object):
 
     def init_app(self, app, blueprint=None, url_prefix=None):
 
+        self.app = app
+
         self.account_sid = account_sid = app.config.get('TWILIO_ACCOUNT_SID')
         self.auth_token = auth_token = app.config.get('TWILIO_AUTH_TOKEN')
         if not (account_sid and auth_token):
             logger.warning('TWILIO_ACCOUNT_SID and/or TWILIO_AUTH_TOKEN not set')
             return
         self.application_sid = app.config.get('TWILIO_APPLICATION_SID')
-        self.client = Client(account_sid, auth_token)
+        self.client = Client(account_sid, auth_token, http_client=TwilioHttpClient())
         self.request_validator = RequestValidator(auth_token)
 
         if blueprint is None:
@@ -77,6 +127,8 @@ class Twilio(object):
         https://www.twilio.com/docs/api/twiml/your_response
         """
 
+        response_class = self.app.response_class
+
         @functools.wraps(func)
         def decorated_view(*args, **kwargs):
 
@@ -86,13 +138,16 @@ class Twilio(object):
                 abort(BAD_REQUEST)
 
             _response = func(_underscore(_request.form), *args, **kwargs)
+
             if _response is None:
                 response = make_response('')
                 response.content_type = 'application/xml'
                 return response, NO_CONTENT
-            response = make_response(str(_response))
-            response.content_type = 'application/xml'
-            return response
+
+            if not isinstance(_response, TwiML):
+                raise ValueError('View function did not return a TwiML response')
+
+            return response_class(_response.to_xml(), mimetype='application/xml')
 
         return decorated_view
 
