@@ -83,7 +83,11 @@ class Twilio(object):
 
     account_sid = None
     auth_token = None
+
     application_sid = None
+
+    api_key_sid = None
+    api_key_secret = None
 
     client = None
     request_validator = None
@@ -104,7 +108,12 @@ class Twilio(object):
         if not (account_sid and auth_token):
             logger.warning('TWILIO_ACCOUNT_SID and/or TWILIO_AUTH_TOKEN not set')
             return
+
         self.application_sid = app.config.get('TWILIO_APPLICATION_SID')
+
+        self.api_key_sid = app.config.get('TWILIO_API_KEY_SID');
+        self.api_key_secret = app.config.get('TWILIO_API_KEY_SECRET');
+
         self.client = Client(account_sid, auth_token, http_client=TwilioHttpClient())
         self.request_validator = RequestValidator(auth_token)
 
