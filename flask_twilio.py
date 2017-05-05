@@ -111,8 +111,8 @@ class Twilio(object):
 
         self.application_sid = app.config.get('TWILIO_APPLICATION_SID')
 
-        self.api_key_sid = app.config.get('TWILIO_API_KEY_SID');
-        self.api_key_secret = app.config.get('TWILIO_API_KEY_SECRET');
+        self.api_key_sid = app.config.get('TWILIO_API_KEY_SID')
+        self.api_key_secret = app.config.get('TWILIO_API_KEY_SECRET')
 
         self.client = Client(account_sid, auth_token, http_client=TwilioHttpClient())
         self.request_validator = RequestValidator(auth_token)
