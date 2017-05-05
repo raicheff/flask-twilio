@@ -10,7 +10,13 @@ import functools
 import logging
 import re
 
-from flask import Blueprint, abort, make_response, request as _request
+from flask import (
+    Blueprint,
+    abort,
+    make_response,
+    request as _request,
+    url_for,
+)
 from requests import Request, Session
 from six.moves.http_client import BAD_REQUEST, NO_CONTENT
 from twilio.http import HttpClient, get_cert_file
@@ -165,6 +171,9 @@ class Twilio(object):
             self._routes[rule] = {'view_func': f, **options}
             return f
         return decorator
+
+    def url_for(self, endpoint):
+        return url_for('{name}.twilio-{endpoint}'.format(name=self.blueprint.name, endpoint=endpoint), _external=True)
 
     def capability_token(self):
         return ClientCapabilityToken(self.account_sid, self.auth_token)
