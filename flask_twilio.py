@@ -152,7 +152,8 @@ class Twilio(object):
                 logger.warning('Invalid signature')
                 abort(BAD_REQUEST)
 
-            _response = func(_underscore(_request.form), *args, **kwargs)
+            # _response = func(_underscore(_request.form), *args, **kwargs)
+            _response = func(*args, **kwargs, payload=_underscore(_request.form))
 
             if _response is None:
                 response = make_response('')
@@ -172,8 +173,8 @@ class Twilio(object):
             return f
         return decorator
 
-    def url_for(self, endpoint):
-        return url_for('{name}.twilio-{endpoint}'.format(name=self.blueprint.name, endpoint=endpoint), _external=True)
+    def url_for(self, endpoint, **values):
+        return url_for('{name}.twilio-{endpoint}'.format(name=self.blueprint.name, endpoint=endpoint), **values, _external=True)
 
     def capability_token(self):
         return ClientCapabilityToken(self.account_sid, self.auth_token)
