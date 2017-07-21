@@ -6,7 +6,7 @@
 #
 
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 setup(
@@ -16,8 +16,8 @@ setup(
     author='Boris Raicheff',
     author_email='b@raicheff.com',
     url='https://github.com/raicheff/flask-twilio',
-    install_requires=('flask', 'six', 'twilio'),
-    py_modules=('flask_twilio',),
+    install_requires=('flask', 'six', 'schematics', 'twilio'),
+    packages=find_packages(),
 )
 
 
