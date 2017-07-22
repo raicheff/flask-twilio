@@ -7,7 +7,6 @@
 
 
 from .extension import Twilio
-from .models import *
 
 
 # EOF

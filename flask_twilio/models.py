@@ -9,6 +9,8 @@
 from schematics import Model
 from schematics.types import IntType, StringType, URLType
 
+from .helpers import _
+
 
 class TwiMLRequest(Model):
     """
@@ -19,6 +21,12 @@ class TwiMLRequest(Model):
     application_sid = StringType()
 
     api_version = StringType()
+
+    def __init__(self, raw_data, *args, **kwargs):
+        super().__init__({_(k): v for k, v in raw_data.items()}, *args, **kwargs)
+
+    def _repr_info(self):
+        return {k: v for k, v in self.items()}
 
 
 class VoiceRequest(TwiMLRequest):
