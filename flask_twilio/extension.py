@@ -10,7 +10,8 @@ import functools
 import logging
 
 from flask import abort, make_response, request
-from six.moves.http_client import BAD_REQUEST, NO_CONTENT
+from schematics.exceptions import DataError
+from six.moves.http_client import BAD_REQUEST, NO_CONTENT, UNPROCESSABLE_ENTITY
 from twilio.jwt.client import ClientCapabilityToken
 from twilio.request_validator import RequestValidator
 from twilio.rest import Client
@@ -88,7 +89,13 @@ class Twilio(object):
                     logger.warning('Invalid signature')
                     abort(BAD_REQUEST)
 
-                response = view_func(model_class(request.form, strict=False), *args, **kwargs)
+                try:
+                    model = model_class(request.form, strict=False, validate=True)
+                except DataError as error:
+                    logger.error('Invalid request payload: %s', error)
+                    abort(UNPROCESSABLE_ENTITY)
+
+                response = view_func(model, *args, **kwargs)
                 if response is None:
                     response = make_response()
                     response.content_type = APPLICATION_XML
