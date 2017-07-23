@@ -20,7 +20,7 @@ class TwiMLRequest(Model):
     account_sid = StringType(required=True)
     """The Twilio account ID. It is 34 characters long, and always starts with the letters AC."""
 
-    api_version = StringType(required=True)
+    api_version = StringType()
     """The version of the Twilio API used to handle this call."""
 
     def __init__(self, raw_data, *args, **kwargs):
@@ -63,6 +63,20 @@ class VoiceStatusRequest(VoiceRequest):
     recording_duration = StringType()
 
 
+class ErrorMixin(object):
+    """
+    https://www.twilio.com/docs/api/security/availability-reliability
+    """
+
+    error_code = IntType()
+
+    error_url = URLType()
+
+
+class VoiceErrorRequest(ErrorMixin, VoiceRequest):
+    """"""
+
+
 class VerificationStatusRequest(VoiceRequest):
     """
     https://www.twilio.com/docs/api/rest/outgoing-caller-ids#status-callback-parameter
@@ -74,18 +88,29 @@ class VerificationStatusRequest(VoiceRequest):
 
 class RecordingStatusRequest(TwiMLRequest):
     """
-    https://www.twilio.com/docs/api/twiml/dial#attributes-recording-status-callback
+    https://www.twilio.com/docs/api/twiml/dial#attributes-recording-status-callback-parameters
     """
 
     call_sid = StringType(required=True)
+    """A unique identifier for the call associated with the recording. This will always refer to the parent leg of a two leg call."""
 
     recording_sid = StringType(required=True)
+    """The unique identifier for the recording."""
+
+    recording_url = URLType()
+    """The URL of the recorded audio."""
+
+    recording_status = StringType()
+    """The status of the recording. Possible values are: `completed`."""
+
+    recording_duration = IntType()
+    """The length of the recording, in seconds."""
 
     recording_channels = IntType()
-    recording_duration = IntType()
+    """The number of channels in the final recording file as an integer. Possible values are `1`, `2`."""
+
     recording_source = StringType()
-    recording_status = StringType()
-    recording_url = URLType()
+    """The type of call that created this recording. For recordings initiated when record is set on `<Dial>`, `DialVerb` is returned."""
 
 
 class GatherRequest(VoiceRequest):

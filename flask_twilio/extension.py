@@ -17,6 +17,8 @@ from twilio.request_validator import RequestValidator
 from twilio.rest import Client
 from twilio.twiml import TwiML
 
+from .errors import TwiMLError
+
 
 APPLICATION_XML = 'application/xml'
 
@@ -95,7 +97,11 @@ class Twilio(object):
                     logger.error('Invalid request payload: %s', error)
                     abort(UNPROCESSABLE_ENTITY)
 
-                response = view_func(model, *args, **kwargs)
+                try:
+                    response = view_func(model, *args, **kwargs)
+                except TwiMLError as error:
+                    response = error.response
+
                 if response is None:
                     response = make_response()
                     response.content_type = APPLICATION_XML
