@@ -6,6 +6,8 @@
 #
 
 
+from enum import Enum
+
 from schematics import Model
 from schematics.types import IntType, StringType, URLType
 
@@ -24,7 +26,7 @@ class TwiMLRequest(Model):
     """The version of the Twilio API used to handle this call."""
 
     def __init__(self, raw_data, *args, **kwargs):
-        super().__init__({_(k): v for k, v in raw_data.items()}, *args, **kwargs)
+        super().__init__({_(k): v for k, v in raw_data.items() if v}, *args, **kwargs)
 
     def _repr_info(self):
         return {k: v for k, v in self.items()}
@@ -83,7 +85,10 @@ class VerificationStatusRequest(VoiceRequest):
     """
 
     verification_status = StringType()
+    """Describes whether or not the person called correctly entered the validation code. Possible values are `success` or `failed`."""
+
     outgoing_caller_id_sid = StringType()
+    """If the verification process was successful, the SID value of the newly-created OutgoingCallerId resource for the verified number."""
 
 
 class RecordingStatusRequest(TwiMLRequest):
@@ -139,6 +144,94 @@ class SIPVoiceRequest(VoiceRequest):
 
     sip_source_ip = StringType(required=True)
     """The IP Address the incoming INVITE came from."""
+
+
+class FaxRequest(TwiMLRequest):
+    """
+    https://www.twilio.com/docs/api/fax/receive
+    """
+
+    fax_sid = StringType(required=True)
+    """The 34-character unique identifier for the fax"""
+
+    from_ = StringType(required=True, serialized_name='from')
+    """The caller ID or SIP From display name"""
+
+    to = StringType(required=True)
+    """The phone number or SIP URI of the destination"""
+
+
+class FaxDirection(Enum):
+    """"""
+
+    OUTBOUND = 'outbound'
+    """Sent"""
+
+    INBOUND = 'inbound'
+    """Received"""
+
+
+class FaxStatus(Enum):
+    """
+    https://www.twilio.com/docs/api/fax/rest/faxes#fax-status-values
+    """
+
+    QUEUED = 'queued'
+    """The fax is queued, waiting for processing"""
+
+    PROCESSING = 'processing'
+    """The fax is being downloaded, uploaded, or transcoded into a different format"""
+
+    SENDING = 'sending'
+    """The fax is in the process of being sent"""
+
+    DELIVERED = 'delivered'
+    """The fax has been successfuly delivered"""
+
+    RECEIVING = 'receiving'
+    """The fax is in the process of being received"""
+
+    RECEIVED = 'received'
+    """The fax has been successfully received"""
+
+    NO_ANSWER = 'no-answer'
+    """The outbound fax failed because the other end did not pick up"""
+
+    BUSY = 'busy'
+    """The outbound fax failed because the other side sent back a busy signal"""
+
+    FAILED = 'failed'
+    """The fax failed to send or receive"""
+
+    CANCELED = 'canceled'
+    """The fax was canceled, either by using the REST API, or rejected by TwiML"""
+
+
+class FaxStatusRequest(FaxRequest):
+    """
+    https://www.twilio.com/docs/api/fax/receive
+    """
+
+    remote_station_id = StringType()
+    """The transmitting subscriber identification (TSID) reported by the sending fax machine"""
+
+    fax_status = StringType(choices=[e.value for e in FaxStatus])
+    """The status of the fax transmission"""
+
+    num_pages = IntType()
+    """The number of pages received (if successful)"""
+
+    media_url = URLType()
+    """A media URL on Twilio's servers that can be used to fetch the received media"""
+
+    original_media_url = URLType()
+    """The original URL passed when sending the fax"""
+
+    error_code = IntType()
+    """A Twilio error code that gives more information about a failure (if any)"""
+
+    error_message = StringType()
+    """A detailed message describing a failure (if any)"""
 
 
 # EOF
